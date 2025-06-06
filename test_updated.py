@@ -2,6 +2,8 @@
 #Date of file creation: 2025-04-06
 #IBEHS 3H03 Project GUI for automated platform
 
+#Updated May 2025 - Sonia Parekh
+
 ##---------------------------------------------------------------------------------
 
 #IMPORTS
@@ -10,7 +12,9 @@ from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QPushButton, QLabel, QSlider,
     QVBoxLayout, QHBoxLayout, QGridLayout, QWidget, QGroupBox
 )
+
 from PyQt5.QtCore import Qt #for sliders
+from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QPixmap #for images
 from PyQt5.QtWidgets import QComboBox
 from PyQt5.QtWidgets import QLineEdit
@@ -21,6 +25,21 @@ import threading
 import time
 import math
 
+import threading
+import traceback
+import io
+import os
+import time
+from lakeshore import Teslameter
+import matplotlib
+import numpy as np
+import pandas as pd
+from matplotlib import cm
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+from scipy.interpolate import griddata
+
+matplotlib.use('Agg')
 
 class MotorControlGUI(QMainWindow): #inherits QMainWindow attributes which has all the function for creating windows
     def __init__(self): #constructor
@@ -28,10 +47,12 @@ class MotorControlGUI(QMainWindow): #inherits QMainWindow attributes which has a
         self.ser = serial.Serial('COM3', 9600)
         self.ser.flush()
         self.setWindowTitle("Automated Platform Control") #window name
+        #self.setStyleSheet("color: black; Background-color: light blue;")
         self.setGeometry(200, 200, 800, 650) #window dimensions
         self.initUI() #call method to setup layout and widgets 
         time.sleep(1) #delay since serial takes time to update when GUI opened
         self.update_speed()  #default speed to Arduino
+        
 
 
     def send_serial(self, command):
@@ -114,14 +135,16 @@ class MotorControlGUI(QMainWindow): #inherits QMainWindow attributes which has a
         axis_layout = QGridLayout() #create grid layout
 
         #define buttons
-        self.x_left_btn = QPushButton("⬅️ Forwards")
-        self.x_right_btn = QPushButton("➡️ Backwards")
-        self.y_up_btn = QPushButton("⬆️ Left")
-        self.y_down_btn = QPushButton("⬇️ Right")
-        self.z_up_btn = QPushButton("🔼")
-        self.z_down_btn = QPushButton("🔽")
+        self.x_left_btn = QPushButton("⏭️ Forwards")
+        self.x_right_btn = QPushButton("⏮️ Backwards")
+        self.y_up_btn = QPushButton("⬆️ Right") #originally left
+        self.y_down_btn = QPushButton("⬇ Left") #originally right
+        self.z_up_btn = QPushButton("🔼 Up")
+        self.z_down_btn = QPushButton("🔽 Down")
+        self.start_btn = QPushButton("🏁 Start")
+        self.stop_btn = QPushButton("⏹️ Stop")
 
-        #define location in matrix
+       #define location in matrix
         axis_layout.addWidget(QLabel("X-Axis"), 0, 0)
         axis_layout.addWidget(self.x_left_btn, 1, 0)
         axis_layout.addWidget(self.x_right_btn, 2, 0)
@@ -134,10 +157,15 @@ class MotorControlGUI(QMainWindow): #inherits QMainWindow attributes which has a
         axis_layout.addWidget(self.z_up_btn, 1, 2)
         axis_layout.addWidget(self.z_down_btn, 2, 2)
 
+        axis_layout.addWidget(QLabel("Measure Field"),0,3)
+        axis_layout.addWidget(self.start_btn,1,3)
+        axis_layout.addWidget(self.stop_btn,2,3)
+
         axis_group.setLayout(axis_layout) #add widgets to container layout
 
-
         #serial button bindings
+        self.start_btn.clicked.connect(self.start_scan_sequence)
+
         self.x_left_btn.pressed.connect(lambda: self.send_serial("X-"))
         self.x_left_btn.released.connect(lambda: self.send_serial("XS"))
 
@@ -156,7 +184,26 @@ class MotorControlGUI(QMainWindow): #inherits QMainWindow attributes which has a
         self.z_down_btn.pressed.connect(lambda: self.send_serial("Z-"))
         self.z_down_btn.released.connect(lambda: self.send_serial("ZS"))
 
-        #define speed input box 
+        self.start_btn.clicked.connect(lambda:self.send_serial("S+"))
+        self.stop_btn.clicked.connect(lambda:self.send_serial("S-"))
+
+    #define home box
+        home_group = QGroupBox("Return Home")
+        home_layout = QGridLayout()
+        
+        self.home_btn = QPushButton("🏠 Home")         
+        self.exit_home_btn = QPushButton("🧳 Exit Homing")
+        
+        home_layout.addWidget(self.home_btn, 0,0)
+        home_layout.addWidget(self.exit_home_btn, 0,1)
+
+        home_group.setLayout(home_layout)
+
+    #home serial button binding
+        self.home_btn.clicked.connect(self.return_home_sequence)
+        self.exit_home_btn.clicked.connect(lambda:self.send_serial("H-"))
+
+    #define speed input box 
         speed_group = QGroupBox("Speed Control")
         speed_layout = QHBoxLayout()
 
@@ -179,16 +226,141 @@ class MotorControlGUI(QMainWindow): #inherits QMainWindow attributes which has a
 
         #Add widgets to main layout
         main_layout.addLayout(title_layout)
+        main_layout.addWidget(home_group)
         main_layout.addWidget(magnet_group)
         main_layout.addWidget(axis_group)
         main_layout.addWidget(speed_group)
-        #main_layout.addWidget(self.status_label)
 
         #------------------------------------
 
         container = QWidget()
         container.setLayout(main_layout)
         self.setCentralWidget(container)
+
+    def start_scan_sequence(self):
+        self.send_serial("S+")
+        thread = threading.Thread(target=self._scan_and_log)
+        thread.daemon = True
+        thread.start()
+
+    def _scan_and_log(self):
+        self.scanning = True
+        try:
+        # Connect to the Teslameter
+            teslameter = Teslameter()
+            teslameter.command('SENSE:MODE DC')
+            serial_no = teslameter.query('PROBE:SNUMBER?')
+            print(f"Connected to probe: {serial_no}")
+
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            file_path = os.path.join(script_dir, "field_map_data.csv")
+        #Open the file & log
+            with open(file_path, 'w') as file:
+                teslameter.log_buffered_data_to_file(145, 100, file)  #duration (seconds), 10 ms timestep
+                #CHANGE THE TIME ABOVE FOR DIFFERENT BOX SIZES
+    
+            # Wait for Arduino to complete movement
+                while True:
+                    if self.ser.in_waiting:
+                        line = self.ser.readline().decode().strip()
+                        print("Arduino:", line)
+                        if line == "Completed!" or line == "Scan Stopped!":
+                            break
+                    time.sleep(0.1)
+                    
+            plot_thread = threading.Thread(target=self.plot_field, args=(file_path,), daemon = True)
+            plot_thread.start()
+            self.plot_field(file_path)
+
+        except Exception as e:
+            print(f"Scan/logging error: {e}")
+        finally:
+            self.scanning = False
+        
+            
+    def plot_field(self, file_path):
+        # Parameters
+        boxsize = 50  # mm
+        increment = 5  # mm
+        num_points = int(boxsize / increment)  # 10
+        total_points = num_points ** 3
+
+
+        df = pd.read_csv(file_path, on_bad_lines='skip')
+        df.columns = ["time_elapsed", "date", "time", "magnitude", "Bx", "By", "Bz", "junk1", "junk2"]
+
+        df = df.head(total_points) # takes only the necessary points
+
+        # Position grid (same order as Arduino movement)
+        x_vals = np.arange(0, boxsize, increment)
+        y_vals = np.arange(0, boxsize, increment)
+        z_vals = np.arange(0, boxsize, increment)
+        X, Y, Z = np.meshgrid(x_vals, y_vals, z_vals, indexing='ij')
+
+        # Flatten a nested list into a single list
+        df["x"] = X.flatten()
+        df["y"] = Y.flatten()
+        df["z"] = Z.flatten()
+
+        # creating vectors (magnitude)
+        u = df["Bx"].astype(float).values  
+        v = df["By"].astype(float).values  
+        w = df["Bz"].astype(float).values  
+
+        # getting vector positions (direction)
+        x = df["x"].values
+        y = df["y"].values
+        z = df["z"].values
+
+        mag = df['magnitude'].to_numpy()
+
+        # Normalize vectors for display
+        norm = np.sqrt(u**2 + v**2 + w**2)
+        u_norm = u / norm
+        v_norm = v / norm
+        w_norm = w / norm
+
+        fig = plt.figure(figsize=(12, 9))
+        ax = fig.add_subplot(111, projection='3d')
+        scale=1e5
+        colors = cm.viridis((norm - norm.min()) / (norm.max() - norm.min()))
+        ax.quiver(x, y, z, u_norm, v_norm, w_norm, normalize=False, color=colors, length=2)
+
+
+        mappable = plt.cm.ScalarMappable(cmap=cm.viridis)
+        mappable.set_array(norm)  # Use actual magnitude norm for colorbar
+        cbar = plt.colorbar(mappable, ax=ax, pad=0.1)
+        cbar.set_label('Field Magnitude [mT]')
+
+        ax.set_xlabel('X [mm]')
+        ax.set_ylabel('Y [mm]')
+        ax.set_zlabel('Z [mm]')
+        ax.set_title('3D Magnetic Field Quiver Plot')
+        plt.tight_layout()
+        plt.savefig("mygraph.png")    
+
+    def return_home_sequence(self):
+        self.send_serial("H+")
+        thread = threading.Thread(target=self.move_home)
+        thread.daemon = True #daemon threads shut down when program exits
+        thread.start()
+    
+    def move_home(self):
+        self.move = True
+        try:
+            while True:
+                if self.ser.in_waiting:
+                    line = self.ser.readline().decode().strip()
+                    print("Arduino:", line)
+                    if line == "Home!" or "Going Home Ended Early":
+                        break
+                time.sleep(0.1)
+        except Exception as e:
+            print("error moving home", e)
+            traceback.print_exc()
+        finally:
+            self.move = False
+
 
 #Run the app
 def window():
@@ -198,5 +370,6 @@ def window():
     sys.exit(app.exec_()) #creates a clean exit
 
 window()
+
 
 
