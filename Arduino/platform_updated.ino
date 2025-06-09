@@ -42,9 +42,9 @@ int halfDelay;
 // Box Movement Variables
 const int boxsize = 50; // mm
 const int increment = 5; //mm
-const int NumXPoints = (boxsize / increment) + 1; //steps per axis
+const int NumXPoints = (boxsize / increment) + 3; //steps per axis
 const int stepsPerIncrement = 125; //98; //based on pitch diameter and steps/rev
-const int NumYPoints = NumXPoints;
+const int NumYPoints = NumXPoints -2 ;
 const int NumZPoints = NumXPoints;
 
 
