@@ -44,7 +44,7 @@ matplotlib.use('Agg')
 class MotorControlGUI(QMainWindow): #inherits QMainWindow attributes which has all the function for creating windows
     def __init__(self): #constructor
         super().__init__() 
-        self.ser = serial.Serial('COM3', 9600)
+        self.ser = serial.Serial('COM9', 9600)
         self.ser.flush()
         self.setWindowTitle("Automated Platform Control") #window name
         #self.setStyleSheet("color: black; Background-color: light blue;")

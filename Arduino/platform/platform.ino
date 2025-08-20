@@ -1,17 +1,17 @@
 // Pin definitions
-#define xStepRight 5
-#define xDirRight 4
-#define xStepLeft 7
-#define xDirLeft 6
-#define yStep 3
-#define yDir 2                               
-#define zStep 9
-#define zDir 8
+#define xStepRight 23
+#define xDirRight 25
+#define xStepLeft 53
+#define xDirLeft 51
+#define yStep 46
+#define yDir 48                             
+#define zStep 22
+#define zDir 24
 
-const int limitSwitchY1 = 50; // limit switch pin locations; moveYL
-const int limitSwitchX1 = 51; 
-const int limitSwitchY2 = 48; 
-const int limitSwitchX2 = 49; 
+const int limitSwitchY1 = 3; // limit switch pin locations; moveYL
+const int limitSwitchX1 = 2; 
+const int limitSwitchY2 = 4; 
+const int limitSwitchX2 = 5; 
 
 // flags for axis movement -> false = dont move -> true = move
 bool moveZ = false;
@@ -164,7 +164,7 @@ void loop() {
           Serial.println("YHome Ended Early");
           break;
         }
-        dirY = LOW;
+        dirY = HIGH;
         digitalWrite(yDir, dirY);
 
         digitalWrite(yStep, HIGH);
@@ -244,8 +244,8 @@ void loop() {
 //create a duty cycle for stepping in the X direction 
 //CW or CCW is determined above based on cmd read at port
 //only on the rising edge triggers a step 
-  checkXSwitches();
-  checkYSwitches();
+  // checkXSwitches();
+  // checkYSwitches();
 
   halfDelay = stepDelay / 2;
 
