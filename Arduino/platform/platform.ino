@@ -7,6 +7,10 @@
 #define yDir 48                             
 #define zStep 22
 #define zDir 24
+#define platformStep 43
+#define platformDir 42
+#define yawStep 37
+#define yawDir 36
 
 const int limitSwitchY1 = 3; // limit switch pin locations; moveYL
 const int limitSwitchX1 = 2; 
@@ -17,6 +21,8 @@ const int limitSwitchX2 = 5;
 bool moveZ = false;
 bool moveX = false;
 bool moveY = false;
+bool movePlatform = false;
+bool moveYaw = false;
 bool yScanDirFlag = true;
 
 // states
@@ -33,6 +39,8 @@ bool yHome = false;
 int dirX = HIGH; //HIGH = CW -> LOW = CCW
 int dirY = HIGH;
 int dirZ = HIGH;
+int dirPlatform = HIGH;
+int dirYaw = HIGH;
 
 unsigned long lastCommand = 0;
 
@@ -65,6 +73,10 @@ void setup() {
   pinMode(yStep, OUTPUT);
   pinMode(zDir, OUTPUT);
   pinMode(zStep, OUTPUT);
+  pinMode(platformStep, OUTPUT);
+  pinMode(platformDir, OUTPUT);
+  pinMode(yawStep, OUTPUT);
+  pinMode(yawDir, OUTPUT);
 
   lastCommand = millis();
 }
@@ -119,20 +131,43 @@ void loop() {
           digitalWrite(zDir, dirZ);
           moveZ = true;}
         else if (cmd == "ZS"){
-          moveZ = false;}
-
-        else if (cmd == "S+"){ 
+          moveZ = false;  
+        }else if (cmd == "S+"){ 
           scanning = true;
           stopMove = false;}
         else if(cmd == "S-"){
           scanning = false;
-          stopMove = true;}
-
-        else if (cmd == "H+"){
+          stopMove = true;
+        }else if (cmd == "H+"){
           stopMove = false;
           goHome = true;
           xHome = false;
           yHome = false;
+        }else if (cmd == "R-"){
+          dirPlatform = LOW;
+          digitalWrite(platformDir, dirPlatform);
+          movePlatform = true;
+        }
+        else if (cmd == "R+"){
+          dirPlatform = HIGH;
+          digitalWrite(platformDir, dirPlatform);
+          movePlatform = true;
+        }
+        else if (cmd == "RS"){
+          movePlatform = false;
+        }
+        else if (cmd == "W+"){
+          dirYaw = HIGH;
+          digitalWrite(yawDir, dirYaw);
+          moveYaw = true;
+        }
+        else if (cmd == "W-"){
+          dirYaw = LOW;
+          digitalWrite(yawDir, dirYaw);
+          moveYaw = true;
+        }
+        else if (cmd == "WS"){
+          moveYaw = false;
         }
       }
   
@@ -271,7 +306,21 @@ void loop() {
     delayMicroseconds(halfDelay);
     digitalWrite(zStep, LOW);
     delayMicroseconds(halfDelay);
-  } 
+  }
+  
+  if (movePlatform) {
+    digitalWrite(platformStep, HIGH);
+    delayMicroseconds(halfDelay);
+    digitalWrite(platformStep, LOW);
+    delayMicroseconds(halfDelay);
+  }
+  
+  if (moveYaw) {
+    digitalWrite(yawStep, HIGH);
+    delayMicroseconds(halfDelay);
+    digitalWrite(yawStep, LOW);
+    delayMicroseconds(halfDelay);
+  }
 }
 
 // Helper Functions:

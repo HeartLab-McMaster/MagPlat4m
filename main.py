@@ -38,13 +38,14 @@ from matplotlib import cm
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from scipy.interpolate import griddata
+from teslameter import TeslameterInterface
 
 matplotlib.use('Agg')
 
 class MotorControlGUI(QMainWindow): #inherits QMainWindow attributes which has all the function for creating windows
     def __init__(self): #constructor
         super().__init__() 
-        self.ser = serial.Serial('COM9', 9600)
+        self.ser = serial.Serial('COM6', 9600)
         self.ser.flush()
         self.setWindowTitle("Automated Platform Control") #window name
         #self.setStyleSheet("color: black; Background-color: light blue;")
@@ -52,7 +53,9 @@ class MotorControlGUI(QMainWindow): #inherits QMainWindow attributes which has a
         self.initUI() #call method to setup layout and widgets 
         time.sleep(1) #delay since serial takes time to update when GUI opened
         self.update_speed()  #default speed to Arduino
-        
+        # self.teslameter = TeslameterInterface()
+        self.teslameter = None
+
 
 
     def send_serial(self, command):
@@ -63,6 +66,8 @@ class MotorControlGUI(QMainWindow): #inherits QMainWindow attributes which has a
     def closeEvent(self, event):
         if self.ser and self.ser.is_open:
             self.ser.close()
+        if self.teslameter:
+            self.teslameter.close()
 
     def update_speed(self):
         value_mm_s = float(self.speed_input.text())
@@ -83,6 +88,48 @@ class MotorControlGUI(QMainWindow): #inherits QMainWindow attributes which has a
         self.send_serial(f"SPD:{delay_microseconds}")
         #time.sleep(1)
 
+    def move_x_for(self):
+        steps = int(self.move_x.text())
+        if steps < 0:
+            for i in range(-steps):
+                self.send_serial("X+")
+                self.send_serial("XS")
+        else:
+            for i in range(steps):
+                self.send_serial("X-")
+                self.send_serial("XS")
+
+    def move_y_for(self):
+        moves = 24
+        step_each_move = 50
+        steps = int(self.move_y.text())
+        for i in range(moves):
+            for j in range(28):
+                if i % 2 == 0:
+                    for s in range(step_each_move):
+                        self.send_serial("Y-")
+                        self.send_serial("YS")
+                else:
+                    for s in range(step_each_move):
+                        self.send_serial("Y+")
+                        self.send_serial("YS")
+                time.sleep(0.1)
+                self.teslameter.scan_to_file(i, j)
+                time.sleep(0.1)
+            for s in range(60):
+                self.send_serial("X+")
+                self.send_serial("XS")
+        # if steps < 0:
+        #     for i in range(-steps):
+        #         self.send_serial("Y+")
+        #         self.send_serial("YS")
+        #         time.sleep(0.1)
+        #         self.teslameter.scan_to_file(steps, 0)
+        #         time.sleep(0.1)
+        # else:
+        #     for i in range(step_each_move):
+        #         self.send_serial("Y-")
+        #         self.send_serial("YS")
 
     def initUI(self):
         main_layout = QVBoxLayout() # define vertical box layout mannager
@@ -186,6 +233,18 @@ class MotorControlGUI(QMainWindow): #inherits QMainWindow attributes which has a
 
         self.start_btn.clicked.connect(lambda:self.send_serial("S+"))
         self.stop_btn.clicked.connect(lambda:self.send_serial("S-"))
+        
+        self.roll_ccw_btn.pressed.connect(lambda: self.send_serial("R-"))
+        self.roll_ccw_btn.released.connect(lambda: self.send_serial("RS"))
+
+        self.roll_cw_btn.pressed.connect(lambda: self.send_serial("R+"))
+        self.roll_cw_btn.released.connect(lambda: self.send_serial("RS"))
+        
+        self.yaw_ccw_btn.pressed.connect(lambda: self.send_serial("W-"))
+        self.yaw_ccw_btn.released.connect(lambda: self.send_serial("WS"))
+
+        self.yaw_cw_btn.pressed.connect(lambda: self.send_serial("W+"))
+        self.yaw_cw_btn.released.connect(lambda: self.send_serial("WS"))
 
     #define home box
         home_group = QGroupBox("Return Home")
@@ -204,7 +263,7 @@ class MotorControlGUI(QMainWindow): #inherits QMainWindow attributes which has a
         self.exit_home_btn.clicked.connect(lambda:self.send_serial("H-"))
 
     #define speed input box 
-        speed_group = QGroupBox("Speed Control")
+        speed_group = QGroupBox("Control")
         speed_layout = QHBoxLayout()
 
         self.speed_label = QLabel("Speed: -- mm/s")
@@ -216,9 +275,25 @@ class MotorControlGUI(QMainWindow): #inherits QMainWindow attributes which has a
 
         # Update speed
         self.speed_input.returnPressed.connect(self.update_speed) #when enter is pressed 
+        
+        self.move_x = QLineEdit()
+        self.move_y = QLineEdit()
+        
+        self.move_x.setFixedWidth(150)
+        self.move_x.setPlaceholderText("Move X in mm (e.g. 20)")
+        self.move_x.setText("50")
+        self.move_x.returnPressed.connect(self.move_x_for) #when enter is pressed 
+
+        self.move_y.setFixedWidth(150)
+        self.move_y.setPlaceholderText("Move Y in mm (e.g. 20)")
+        self.move_y.setText("50")
+        self.move_y.returnPressed.connect(self.move_y_for) #when enter is pressed
+
 
         speed_layout.addWidget(self.speed_input)
         speed_layout.addWidget(self.speed_label)
+        speed_layout.addWidget(self.move_x)
+        speed_layout.addWidget(self.move_y)
         speed_group.setLayout(speed_layout)
 
 
