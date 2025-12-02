@@ -1,3 +1,5 @@
+This is a GUI application for controlling an automated platform via serial communication.
+
 To run GUI, install the following python libraries:
 
 ```
@@ -7,5 +9,5 @@ pip install pyserial
 
 Launch using:
 ```
-python test.py
+python main.py
 ```

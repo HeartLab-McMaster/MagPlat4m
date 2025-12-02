@@ -148,13 +148,13 @@ class MotorControlGUI(QMainWindow): #inherits QMainWindow attributes which has a
 
         #define image one
         self.image_label1 = QLabel()
-        pixmap = QPixmap("HeartLabLogo.png") 
+        pixmap = QPixmap("assets/HeartLabLogo.png") 
         pixmap = pixmap.scaledToHeight(80, Qt.SmoothTransformation)  
         self.image_label1.setPixmap(pixmap)        
 
         #define image
         self.image_label2 = QLabel()
-        pixmap = QPixmap("McMasterUniLogo.png")  
+        pixmap = QPixmap("assets/McMasterUniLogo.png")  
         pixmap = pixmap.scaledToHeight(80, Qt.SmoothTransformation) 
         self.image_label2.setPixmap(pixmap)  
 

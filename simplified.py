@@ -25,8 +25,8 @@ import math
 class MotorControlGUI(QMainWindow): #inherits QMainWindow attributes which has all the function for creating windows
     def __init__(self): #constructor
         super().__init__() 
-        self.ser = serial.Serial('COM3', 9600)
-        self.ser.flush()
+        self.ser = None
+        # self.ser.flush()
         self.setWindowTitle("Automated Platform Control") #window name
         self.setGeometry(200, 200, 800, 650) #window dimensions
         self.initUI() #call method to setup layout and widgets 
@@ -35,6 +35,7 @@ class MotorControlGUI(QMainWindow): #inherits QMainWindow attributes which has a
 
 
     def send_serial(self, command):
+        return
         if self.ser.is_open:
             self.ser.write((command + "\n").encode()) #arduino reads commands on new lines
             print(f"Sent: {command}")
@@ -80,13 +81,13 @@ class MotorControlGUI(QMainWindow): #inherits QMainWindow attributes which has a
 
         #define image one
         self.image_label1 = QLabel()
-        pixmap = QPixmap("HeartLabLogo.png") 
+        pixmap = QPixmap("assets/HeartLabLogo.png") 
         pixmap = pixmap.scaledToHeight(80, Qt.SmoothTransformation)  
         self.image_label1.setPixmap(pixmap)        
 
         #define image
         self.image_label2 = QLabel()
-        pixmap = QPixmap("McMasterUniLogo.png")  
+        pixmap = QPixmap("assets/McMasterUniLogo.png")  
         pixmap = pixmap.scaledToHeight(80, Qt.SmoothTransformation) 
         self.image_label2.setPixmap(pixmap)  
 
