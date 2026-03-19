@@ -111,12 +111,12 @@ void loop() {
           moveX = false;}
 
         else if (cmd == "Y+"){
-          dirY = HIGH;
+          dirY = LOW;
           digitalWrite(yDir, dirY);
           moveY = true;}
 
         else if (cmd == "Y-"){
-          dirY = LOW;
+          dirY = HIGH;
           digitalWrite(yDir, dirY);
           moveY = true;}
         else if (cmd == "YS"){
