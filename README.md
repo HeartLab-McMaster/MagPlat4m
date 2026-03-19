@@ -2,10 +2,6 @@
 
 A comprehensive PyQt5-based GUI application for controlling an automated research platform with multi-axis motion capabilities and magnetic field measurement integration.
 
-## Overview
-
-MagPlat4m is a control system designed for the IBEHS 3H03 collaborative research project. It provides intuitive control of an automated platform via serial communication with Arduino hardware, supports joystick/gamepad input, and integrates real-time magnetic field measurements through a Teslameter device.
-
 ## Features
 
 - **Multi-Axis Control**: X, Y, Z axis positioning and rotational control (Roll, Pitch, Yaw)
