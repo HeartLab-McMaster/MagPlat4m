@@ -1,12 +1,20 @@
-# Ryan Seyedan - 400467887 - seyedanr - seyedanr@mcmaster.ca
-# Date of file creation: 2025-04-06
-# IBEHS 3H03 Project GUI for automated platform
 
-# Updated May 2025 - Sonia Parekh
+"""
+================================================================================
+MagPlat4m - Automated Magnetic Platform Control System
+Main GUI Application
 
-# ---------------------------------------------------------------------------------
+Authors:
+    - Ryan Seyedan
+    - Sonia Parekh
+    - Veerash Palanichamy
+    
+Date Created: April 6, 2025
+Last Modified: March 2026
 
-# IMPORTS
+================================================================================
+"""
+
 import sys  # used to access system paramters like OS
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QPushButton, QLabel, QSlider,
